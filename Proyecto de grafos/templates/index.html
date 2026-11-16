@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="description" content="Explora grafos, encuentra rutas con BFS y aprende recorridos DFS en un campus interactivo.">
+  <title>CampusGraph · Laboratorio de grafos</title>
+  <!-- Play CDN es solo para esta demostración. El CSS local mantiene la interfaz usable sin internet. -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-graph" viewBox="0 0 24 24"><path d="m7 7 10 3M7 7l3 11m7-8-7 8"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="10" r="3"/><circle cx="10" cy="19" r="3"/></symbol>
+    <symbol id="i-campus" viewBox="0 0 24 24"><path d="m3 9 9-6 9 6M4 10h16M6 10v10m6-10v10m6-10v10M3 21h18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5v16M12 5C8 2 3 3 3 3v16s5-1 9 2c4-3 9-2 9-2V3s-5-1-9 2Z"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h9a4 4 0 0 1 0 8H8a3 3 0 0 0 0 6h9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 7-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 1 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></symbol>
+    <symbol id="i-step" viewBox="0 0 24 24"><path d="m5 4 11 8-11 8ZM20 4v16"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6M14 3l-4 18"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  </svg>
+
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="CampusGraph, inicio"><span class="brand-mark"><svg class="icon"><use href="#i-graph"/></svg></span><span>Campus<span class="text-cyan">Graph</span><small>SISTEMA INTERACTIVO DE GRAFOS</small></span></a>
+    <div class="sidebar-label">ESPACIO DE APRENDIZAJE</div>
+    <nav aria-label="Navegación principal">
+      <button class="nav-item active" data-section="campus" aria-current="page"><svg class="icon"><use href="#i-campus"/></svg><span>Campus universitario</span><span class="nav-dot"></span></button>
+      <button class="nav-item" data-section="dependencias"><svg class="icon"><use href="#i-book"/></svg><span>Dependencias académicas</span></button>
+    </nav>
+    <div class="sidebar-note"><span class="mini-tag">APRENDE HACIENDO</span><h3>Cada conexión cuenta.</h3><p>Transforma estructuras de datos en ideas que puedes ver y explorar.</p><div class="note-network" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
+    <div class="sidebar-footer"><div class="avatar">PE</div><div>Programación Estructurada<small>Proyecto académico · Grafos</small></div></div>
+  </aside>
+
+  <div class="workspace">
+    <header class="topbar"><div class="breadcrumb">Laboratorio <span>/</span> <strong id="breadcrumb-section">Campus universitario</strong></div><div class="connection" id="connection" role="status"><span></span>Conectando con Flask</div></header>
+    <main>
+      <div class="page-heading flex flex-wrap items-center justify-between gap-4">
+        <div><div class="eyebrow"><span></span> EXPLORA · CONECTA · APRENDE</div><h1 id="page-title">Tu campus, conectado<span>.</span></h1><p id="page-description">Descubre cómo los grafos conectan lugares y encuentra el camino entre ellos.</p></div>
+        <button class="button secondary" id="restore"><svg class="icon"><use href="#i-reset"/></svg>Restaurar ejemplo</button>
+      </div>
+
+      <section class="stats-grid" aria-label="Estadísticas del grafo">
+        <article class="stat-card"><div class="stat-icon cyan"><svg class="icon"><use href="#i-campus"/></svg></div><div><span id="vertices-label">Edificios</span><strong id="stat-vertices">—</strong></div><span class="stat-caption">Vértices del grafo</span></article>
+        <article class="stat-card"><div class="stat-icon blue"><svg class="icon"><use href="#i-link"/></svg></div><div><span id="edges-label">Conexiones</span><strong id="stat-edges">—</strong></div><span class="stat-caption" id="edge-caption">En ambos sentidos</span></article>
+        <article class="stat-card"><div class="stat-icon violet"><svg class="icon"><use href="#i-route"/></svg></div><div><span>Última exploración</span><strong id="stat-visited">— <small>vértices</small></strong></div><span class="stat-caption" id="stat-algorithm">Listo para explorar</span></article>
+      </section>
+
+      <div class="laboratory-grid">
+        <section class="panel graph-panel" aria-labelledby="graph-title">
+          <div class="panel-heading"><div><h2 id="graph-title">Mapa del campus</h2><p id="graph-subtitle">Un lugar para cada vértice. Un camino para cada conexión.</p></div><span class="pill" id="graph-type"><span></span>No dirigido</span></div>
+          <div class="graph-toolbar"><div class="toolbar-actions"><button class="button small secondary" id="add-vertex"><svg class="icon"><use href="#i-plus"/></svg><span id="add-vertex-label">Edificio</span></button><button class="button small secondary" id="add-edge"><svg class="icon"><use href="#i-link"/></svg><span id="add-edge-label">Conexión</span></button></div><span class="graph-tip">Arrastra los nodos para organizar</span></div>
+          <div class="graph-canvas" id="graph-canvas">
+            <svg id="graph" viewBox="0 0 820 470" role="group" aria-label="Grafo interactivo del campus"><title>Edificios y conexiones</title></svg>
+            <div class="canvas-label"><span></span><span id="canvas-label">CAMPUS UNIVERSITARIO</span></div>
+            <div class="zoom-controls"><button id="zoom-out" aria-label="Alejar">−</button><span id="zoom-value">100%</span><button id="zoom-in" aria-label="Acercar">+</button><button id="fit" aria-label="Centrar y reorganizar grafo"><svg class="icon"><use href="#i-fit"/></svg></button></div>
+            <div id="graph-empty" class="graph-empty" hidden>No hay vértices todavía.<br>Agrega uno para comenzar a conectar ideas.</div>
+          </div>
+          <div class="graph-legend"><span><i class="legend-dot default"></i>Sin explorar</span><span><i class="legend-dot explored"></i>Explorado</span><span><i class="legend-dot route"></i>Ruta BFS</span><span><i class="legend-dot dfs"></i>Recorrido DFS</span></div>
+          <div class="animation-bar"><div class="animation-title"><svg class="icon"><use href="#i-play"/></svg><div>Exploración paso a paso<small id="animation-status">Ejecuta un algoritmo para comenzar</small></div></div><div class="animation-actions"><button class="button small secondary" id="animation-start" disabled><svg class="icon"><use href="#i-play"/></svg>Iniciar</button><button class="icon-button" id="animation-next" title="Siguiente paso" aria-label="Siguiente paso" disabled><svg class="icon"><use href="#i-step"/></svg></button><button class="icon-button" id="animation-reset" title="Reiniciar animación" aria-label="Reiniciar animación" disabled><svg class="icon"><use href="#i-reset"/></svg></button></div></div>
+          <div id="frontier" class="frontier" hidden></div>
+        </section>
+
+        <aside class="tools-column">
+          <section class="panel algorithm-panel" id="campus-tools" aria-labelledby="tools-title">
+            <div class="panel-heading compact"><div><h2 id="tools-title">Explora el grafo</h2><p>Elige un algoritmo y descubre su recorrido.</p></div></div>
+            <div class="algorithm-tabs" role="tablist" aria-label="Algoritmos"><button id="tab-bfs" role="tab" aria-selected="true" aria-controls="algorithm-form" class="active" data-algorithm="BFS"><svg class="icon"><use href="#i-route"/></svg>Ruta BFS</button><button id="tab-dfs" role="tab" aria-selected="false" aria-controls="algorithm-form" data-algorithm="DFS"><svg class="icon"><use href="#i-graph"/></svg>Recorrido DFS</button></div>
+            <form id="algorithm-form" role="tabpanel" aria-labelledby="tab-bfs">
+              <div class="algorithm-intro"><span id="algorithm-badge" class="mini-tag">BÚSQUEDA EN ANCHURA</span><p id="algorithm-description">Encuentra la ruta con menos conexiones entre dos edificios.</p></div>
+              <label for="origin" id="origin-label">Edificio de origen</label><select id="origin" name="origen" required></select>
+              <div id="destination-field"><div class="field-connector" aria-hidden="true">⋮</div><label for="destination">Edificio de destino</label><select id="destination" name="destino" required></select></div>
+              <label class="checkbox-label"><input type="checkbox" id="step-mode" checked><span>Mostrar exploración paso a paso</span><svg class="icon"><use href="#i-info"/></svg></label>
+              <button class="button primary full" id="run-algorithm" type="submit"><svg class="icon"><use href="#i-route"/></svg><span id="run-label">Encontrar ruta mínima</span><span class="button-arrow">→</span></button>
+            </form>
+          </section>
+          <section class="panel" id="dependency-tools" hidden><div class="panel-heading compact"><div><h2>Planifica tu aprendizaje</h2><p>Organiza asignaturas y sus prerrequisitos.</p></div></div><div class="dependency-content"><span class="mini-tag violet-text">GRAFO DIRIGIDO</span><p>Una flecha A → B indica que debes cursar A antes de B.</p><button id="topological" class="button primary full violet-button"><svg class="icon"><use href="#i-check"/></svg>Comprobar y ordenar</button><div class="info-inline">Se utiliza el algoritmo de Kahn. Si hay un ciclo, no existe un orden topológico.</div></div></section>
+          <section class="panel result-panel" aria-labelledby="result-title"><div class="result-heading"><h2 id="result-title">Resultado de la exploración</h2><span class="result-dot" id="result-dot"></span></div><div id="result" aria-live="polite"><div class="empty-result"><span class="empty-result-icon"><svg class="icon"><use href="#i-route"/></svg></span><p>El próximo camino empieza aquí</p><small>Selecciona tus edificios y ejecuta un algoritmo para ver el resultado.</small></div></div></section>
+        </aside>
+      </div>
+
+      <div class="details-grid">
+        <section class="panel adjacency-panel"><div class="panel-heading"><div><div class="heading-with-icon"><svg class="icon text-cyan"><use href="#i-code"/></svg><h2>Así se guarda tu grafo</h2></div><p>Lista de adyacencia · Cada vértice y sus vecinos.</p></div><span class="code-badge">Python · dict</span></div><div id="adjacency" class="adjacency-list"></div><div class="panel-footnote" id="adjacency-note">Cada conexión aparece en ambos sentidos porque el grafo no es dirigido.</div></section>
+        <section class="learning-card"><span class="mini-tag">DE LA TEORÍA A LA PRÁCTICA</span><h2 id="learning-title">Primero cerca.<br>Después, más lejos.</h2><p id="learning-copy">BFS explora por niveles: primero los vecinos, después los vecinos de esos vecinos. Así encuentra la ruta con menos aristas en un grafo sin peso.</p><div id="learning-visual" class="level-visual"><span>Origen<small>Nivel 0</small></span><b>→</b><span>Vecinos<small>Nivel 1</small></span><b>→</b><span>Más lejos<small>Nivel 2</small></span></div><a href="#quick-guide" class="learn-link">Cómo usar el laboratorio <span>↗</span></a></section>
+      </div>
+      <section class="quick-guide" id="quick-guide"><div><span class="guide-number">01</span><p><strong>Construye</strong>Agrega vértices y conecta tus ideas.</p></div><div><span class="guide-number">02</span><p><strong>Explora</strong>Elige un algoritmo y un punto de partida.</p></div><div><span class="guide-number">03</span><p><strong>Comprende</strong>Avanza paso a paso y observa el resultado.</p></div></section>
+      <footer class="page-footer"><span>CampusGraph <span>·</span> Sistema interactivo de grafos</span><span>Hecho para conectar el conocimiento.</span></footer>
+    </main>
+  </div>
+
+  <dialog id="editor-dialog" aria-labelledby="editor-title"><div class="modal-heading"><div><span class="eyebrow">CONSTRUYE TU GRAFO</span><h2 id="editor-title">Administrar edificios</h2></div><button class="icon-button" id="close-editor" aria-label="Cerrar">×</button></div><div class="editor-tabs"><button class="active" data-editor="vertices">Vértices</button><button data-editor="edges">Conexiones</button></div><form id="vertex-form"><label for="vertex-name" id="vertex-name-label">Nombre del edificio</label><div class="input-row"><input id="vertex-name" name="nombre" required maxlength="60" placeholder="Ej. Centro deportivo" autocomplete="off"><button class="button primary" type="submit">Agregar</button></div></form><form id="edge-form" hidden><label for="edge-origin" id="edge-origin-label">Desde el edificio</label><select id="edge-origin" required></select><label for="edge-destination" id="edge-destination-label">Hasta el edificio</label><select id="edge-destination" required></select><button class="button primary full" type="submit" id="save-edge">Crear conexión</button><p class="muted" id="edge-direction-hint">La conexión se agregará en ambos sentidos.</p></form><p id="editor-error" class="form-error" role="alert" hidden></p><div id="editor-list" class="editor-list"></div></dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">¿Eliminar este elemento?</h2><p id="confirm-message"></p><div class="confirm-actions"><button class="button secondary" id="confirm-cancel">Cancelar</button><button class="button danger" id="confirm-accept">Eliminar</button></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <noscript><div class="noscript">Activa JavaScript en tu navegador para utilizar CampusGraph.</div></noscript>
+</body>
+</html>
